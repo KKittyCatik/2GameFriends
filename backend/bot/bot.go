@@ -10,13 +10,14 @@ import (
 )
 
 type Bot struct {
-	token  string
-	webApp string
-	logger *zap.Logger
+	token       string
+	webApp      string
+	socks5Proxy string
+	logger      *zap.Logger
 }
 
-func New(token, webApp string, logger *zap.Logger) *Bot {
-	return &Bot{token: token, webApp: webApp, logger: logger}
+func New(token, webApp, socks5Proxy string, logger *zap.Logger) *Bot {
+	return &Bot{token: token, webApp: webApp, socks5Proxy: socks5Proxy, logger: logger}
 }
 
 func (b *Bot) Run(ctx context.Context) error {
@@ -25,7 +26,12 @@ func (b *Bot) Run(ctx context.Context) error {
 		return nil
 	}
 
-	api, err := tgbotapi.NewBotAPI(b.token)
+	httpClient, err := NewHTTPClient(b.socks5Proxy)
+	if err != nil {
+		return err
+	}
+
+	api, err := tgbotapi.NewBotAPIWithClient(b.token, tgbotapi.APIEndpoint, httpClient)
 	if err != nil {
 		return err
 	}

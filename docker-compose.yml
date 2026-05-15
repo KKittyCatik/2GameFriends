@@ -3,10 +3,14 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    environment:
+      - SOCKS5_PROXY=${SOCKS5_PROXY:-host-gateway:40000}
     volumes:
       - ./data:/app/data
       - ./service-account.json:/app/service-account.json
     env_file: .env
+    extra_hosts:
+      - "host-gateway:host-gateway"
 
   frontend:
     build: ./frontend

@@ -1,0 +1,13 @@
+[Unit]
+Description=Cloudflare WARP auto-connect
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/warp-cli connect
+ExecStop=/usr/bin/warp-cli disconnect
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

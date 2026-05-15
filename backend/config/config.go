@@ -6,6 +6,7 @@ import (
 
 type Config struct {
 	BotToken                 string
+	Socks5Proxy              string
 	WebAppURL                string
 	DatabasePath             string
 	GoogleServiceAccountJSON string
@@ -18,6 +19,7 @@ type Config struct {
 func Load() Config {
 	cfg := Config{
 		BotToken:                 getEnv("BOT_TOKEN", ""),
+		Socks5Proxy:              getEnv("SOCKS5_PROXY", ""),
 		WebAppURL:                getEnv("WEBAPP_URL", "http://localhost:5173"),
 		DatabasePath:             getEnv("DATABASE_PATH", "./data/poker.db"),
 		GoogleServiceAccountJSON: getEnv("GOOGLE_SERVICE_ACCOUNT_JSON", ""),
