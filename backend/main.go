@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -38,7 +39,7 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://web.telegram.org", "https://t.me", "*"},
+		AllowOrigins:     []string{"https://web.telegram.org", "https://t.me"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
 		AllowHeaders:     []string{"Content-Type", "X-Telegram-Init-Data"},
 		AllowCredentials: true,
@@ -50,10 +51,17 @@ func main() {
 
 	router.NoRoute(func(c *gin.Context) {
 		frontendPath := cfg.FrontendDistPath
-		requestedPath := filepath.Join(frontendPath, c.Request.URL.Path)
-		if _, err := os.Stat(requestedPath); err == nil {
-			c.File(requestedPath)
-			return
+		cleanPath := filepath.Clean("/" + c.Request.URL.Path)
+		requestedPath := filepath.Join(frontendPath, cleanPath)
+		baseAbs, baseErr := filepath.Abs(frontendPath)
+		reqAbs, reqErr := filepath.Abs(requestedPath)
+		if baseErr == nil && reqErr == nil {
+			if strings.HasPrefix(reqAbs, baseAbs+string(os.PathSeparator)) || reqAbs == baseAbs {
+				if _, err := os.Stat(reqAbs); err == nil {
+					c.File(reqAbs)
+					return
+				}
+			}
 		}
 		indexPath := filepath.Join(frontendPath, "index.html")
 		if _, err := os.Stat(indexPath); err == nil {

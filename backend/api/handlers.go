@@ -168,7 +168,7 @@ func (h *Handler) addBuyin(c *gin.Context) {
 		Amount   int64 `json:"amount" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be a positive number"})
 		return
 	}
 	buyin, err := h.store.AddBuyin(c.Request.Context(), models.Buyin{SessionID: sessionID, PlayerID: req.PlayerID, Amount: req.Amount})
@@ -213,7 +213,7 @@ func (h *Handler) finishPlayer(c *gin.Context) {
 		ChipsRemaining int64 `json:"chips_remaining" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.ChipsRemaining < 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "chips_remaining must be non-negative"})
 		return
 	}
 	res, err := h.store.FinishPlayer(c.Request.Context(), models.PlayerResult{SessionID: sessionID, PlayerID: pid, ChipsRemaining: req.ChipsRemaining})
