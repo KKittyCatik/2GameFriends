@@ -2,22 +2,21 @@ package bot
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
-	"os"
 
 	"golang.org/x/net/proxy"
 )
 
-func NewHTTPClient() *http.Client {
-	socksAddr := os.Getenv("SOCKS5_PROXY")
+func NewHTTPClient(socksAddr string) (*http.Client, error) {
 	if socksAddr == "" {
-		return http.DefaultClient
+		return http.DefaultClient, nil
 	}
 
 	dialer, err := proxy.SOCKS5("tcp", socksAddr, nil, proxy.Direct)
 	if err != nil {
-		panic("failed to create SOCKS5 dialer: " + err.Error())
+		return nil, fmt.Errorf("failed to create SOCKS5 dialer: %w", err)
 	}
 
 	transport := &http.Transport{
@@ -26,5 +25,5 @@ func NewHTTPClient() *http.Client {
 		},
 	}
 
-	return &http.Client{Transport: transport}
+	return &http.Client{Transport: transport}, nil
 }

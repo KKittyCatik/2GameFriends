@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -36,7 +35,6 @@ func checkSocksProxy(addr string) error {
 		return fmt.Errorf("SOCKS5 proxy at %s is not reachable: %w", addr, err)
 	}
 	_ = conn.Close()
-	log.Printf("✅ SOCKS5 proxy OK: %s", addr)
 	return nil
 }
 
@@ -47,6 +45,9 @@ func main() {
 
 	if err := checkSocksProxy(cfg.Socks5Proxy); err != nil {
 		logger.Fatal("proxy check failed", zap.Error(err))
+	}
+	if cfg.Socks5Proxy != "" {
+		logger.Info("SOCKS5 proxy OK", zap.String("addr", cfg.Socks5Proxy))
 	}
 
 	store, err := storage.New(cfg.DatabasePath)
@@ -98,7 +99,7 @@ func main() {
 	defer cancel()
 
 	go func() {
-		if err := bot.New(cfg.BotToken, cfg.WebAppURL, logger).Run(ctx); err != nil {
+		if err := bot.New(cfg.BotToken, cfg.WebAppURL, cfg.Socks5Proxy, logger).Run(ctx); err != nil {
 			logger.Error("bot failed", zap.Error(err))
 		}
 	}()
