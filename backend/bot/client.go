@@ -11,7 +11,7 @@ import (
 
 func NewHTTPClient(socksAddr string) (*http.Client, error) {
 	if socksAddr == "" {
-		return http.DefaultClient, nil
+		return &http.Client{}, nil
 	}
 
 	dialer, err := proxy.SOCKS5("tcp", socksAddr, nil, proxy.Direct)
