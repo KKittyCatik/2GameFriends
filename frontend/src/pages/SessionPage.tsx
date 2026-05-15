@@ -13,6 +13,7 @@ export function SessionPage() {
   const [players, setPlayers] = useState<Player[]>([])
   const [buyins, setBuyins] = useState<Buyin[]>([])
   const [summary, setSummary] = useState<Summary | null>(null)
+  const [error, setError] = useState('')
   const [showAddPlayer, setShowAddPlayer] = useState(false)
   const [newPlayerName, setNewPlayerName] = useState('')
   const [newUsername, setNewUsername] = useState('')
@@ -21,20 +22,25 @@ export function SessionPage() {
   const [sheetURL, setSheetURL] = useState('')
 
   const load = async () => {
-    const [s, p, b, sum] = await Promise.all([
-      api.get<Session>(`/api/sessions/${sessionID}`),
-      api.get<Player[]>(`/api/sessions/${sessionID}/players`),
-      api.get<Buyin[]>(`/api/sessions/${sessionID}/buyins`),
-      api.get<Summary>(`/api/sessions/${sessionID}/summary`)
-    ])
-    setSession(s)
-    setPlayers(p)
-    setBuyins(b)
-    setSummary(sum)
+    try {
+      const [s, p, b, sum] = await Promise.all([
+        api.get<Session>(`/api/sessions/${sessionID}`),
+        api.get<Player[]>(`/api/sessions/${sessionID}/players`),
+        api.get<Buyin[]>(`/api/sessions/${sessionID}/buyins`),
+        api.get<Summary>(`/api/sessions/${sessionID}/summary`)
+      ])
+      setSession(s)
+      setPlayers(p)
+      setBuyins(b)
+      setSummary(sum)
+      setError('')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Не удалось загрузить сессию')
+    }
   }
 
   useEffect(() => {
-    load().catch(() => undefined)
+    load()
   }, [sessionID])
 
   const buyinByPlayer = useMemo(() => {
@@ -69,6 +75,7 @@ export function SessionPage() {
       <div className="card">
         <h1>{session.title}</h1>
         <p>{new Date(session.started_at).toLocaleString()} · {session.status}</p>
+        {error && <p className="profit down">{error}</p>}
         <div className="row wrap">
           <button className="btn" onClick={() => setShowAddPlayer(true)}>Добавить игрока</button>
           <button className="btn btn-danger" onClick={finishSession}>Завершить сессию</button>
