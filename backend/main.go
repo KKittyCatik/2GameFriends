@@ -70,10 +70,6 @@ func main() {
 		}
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 	})
-	if _, err := os.Stat(cfg.FrontendDistPath); err == nil {
-		router.Static("/", cfg.FrontendDistPath)
-	}
-
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
