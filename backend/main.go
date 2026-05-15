@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,12 +20,34 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"golang.org/x/net/proxy"
 )
+
+func checkSocksProxy(addr string) error {
+	if addr == "" {
+		return nil
+	}
+	dialer, err := proxy.SOCKS5("tcp", addr, nil, proxy.Direct)
+	if err != nil {
+		return fmt.Errorf("cannot create SOCKS5 dialer: %w", err)
+	}
+	conn, err := dialer.Dial("tcp", "api.telegram.org:443")
+	if err != nil {
+		return fmt.Errorf("SOCKS5 proxy at %s is not reachable: %w", addr, err)
+	}
+	_ = conn.Close()
+	log.Printf("✅ SOCKS5 proxy OK: %s", addr)
+	return nil
+}
 
 func main() {
 	cfg := config.Load()
 	logger, _ := zap.NewProduction()
 	defer logger.Sync()
+
+	if err := checkSocksProxy(cfg.Socks5Proxy); err != nil {
+		logger.Fatal("proxy check failed", zap.Error(err))
+	}
 
 	store, err := storage.New(cfg.DatabasePath)
 	if err != nil {
