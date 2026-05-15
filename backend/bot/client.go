@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"golang.org/x/net/proxy"
 )
 
 func NewHTTPClient(socksAddr string) (*http.Client, error) {
 	if socksAddr == "" {
-		return &http.Client{}, nil
+		return &http.Client{Timeout: 30 * time.Second}, nil
 	}
 
 	dialer, err := proxy.SOCKS5("tcp", socksAddr, nil, proxy.Direct)
@@ -25,5 +26,8 @@ func NewHTTPClient(socksAddr string) (*http.Client, error) {
 		},
 	}
 
-	return &http.Client{Transport: transport}, nil
+	return &http.Client{
+		Transport: transport,
+		Timeout:   30 * time.Second,
+	}, nil
 }
