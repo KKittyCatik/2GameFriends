@@ -44,10 +44,17 @@ export function SessionPage() {
   }, [sessionID])
 
   const buyinByPlayer = useMemo(() => {
-    const map = new Map<number, number>()
-    buyins.forEach((buyin) => map.set(buyin.player_id, (map.get(buyin.player_id) || 0) + buyin.amount))
-    return map
-  }, [buyins])
+  const map = new Map<number, number>()
+
+  ;(buyins || []).forEach((buyin) => {
+    map.set(
+      buyin.player_id,
+      (map.get(buyin.player_id) || 0) + buyin.amount
+    )
+  })
+
+  return map
+}, [buyins])
 
   const submitAddPlayer = async (e: FormEvent) => {
     e.preventDefault()
@@ -98,8 +105,8 @@ export function SessionPage() {
       )}
 
       <div className="grid">
-        {players.map((player) => {
-          const sum = summary?.rows.find((row) => row.player_id === player.id)
+        {(players || []).map((player) => {
+          const sum = summary?.rows?.find((row) => row.player_id === player.id)
           return (
             <div className="card flip" key={player.id}>
               <h3>{player.name} {player.username ? `@${player.username}` : ''}</h3>
@@ -115,7 +122,7 @@ export function SessionPage() {
       </div>
 
       <div className="card statbar">
-        <span>Банк: {buyins.reduce((acc, item) => acc + item.amount, 0)}</span>
+        <span>Банк: {(buyins || []).reduce((acc, item) => acc + item.amount, 0)}</span>
         <span>Закупов: {buyins.length}</span>
         <span>Игроков: {players.length}</span>
       </div>

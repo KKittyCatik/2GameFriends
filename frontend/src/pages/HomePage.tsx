@@ -7,7 +7,9 @@ export function HomePage() {
   const [sessions, setSessions] = useState<Session[]>([])
 
   useEffect(() => {
-    api.get<Session[]>('/api/sessions').then(setSessions).catch(() => setSessions([]))
+    api.get<Session[]>('/api/sessions')
+      .then((data) => setSessions(Array.isArray(data) ? data : []))
+      .catch(() => setSessions([]))
   }, [])
 
   return (
@@ -17,7 +19,7 @@ export function HomePage() {
         <Link className="btn" to="/new">Новая игра</Link>
       </div>
       <div className="grid">
-        {sessions.map((session) => (
+        {(sessions || []).map((session) => (
           <Link key={session.id} to={`/session/${session.id}`} className="card session-card">
             <h3>{session.title}</h3>
             <p>{new Date(session.started_at).toLocaleString()}</p>

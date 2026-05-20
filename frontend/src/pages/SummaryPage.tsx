@@ -37,7 +37,7 @@ export function SummaryPage() {
           </tr>
         </thead>
         <tbody>
-          {summary.rows.map((row) => (
+        {(summary?.rows || []).map((row) => (
             <tr key={row.player_id}>
               <td>{row.player_name}</td>
               <td>{row.buyins_count}</td>

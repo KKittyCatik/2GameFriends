@@ -104,7 +104,7 @@ ORDER BY s.started_at DESC`, userID, userID)
 	}
 	defer rows.Close()
 
-	var out []models.Session
+	out := []models.Session{}
 	for rows.Next() {
 		var sRow models.Session
 		var finished sql.NullTime
@@ -174,7 +174,8 @@ func (s *Store) ListPlayers(ctx context.Context, sessionID int64) ([]models.Play
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Player
+
+	out := []models.Player{}
 	for rows.Next() {
 		var p models.Player
 		if err := rows.Scan(&p.ID, &p.SessionID, &p.TelegramID, &p.Username, &p.Name); err != nil {
@@ -202,7 +203,8 @@ func (s *Store) ListBuyins(ctx context.Context, sessionID int64) ([]models.Buyin
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Buyin
+
+	out := []models.Buyin{}
 	for rows.Next() {
 		var b models.Buyin
 		if err := rows.Scan(&b.ID, &b.SessionID, &b.PlayerID, &b.Amount, &b.CreatedAt); err != nil {
@@ -229,6 +231,8 @@ DO UPDATE SET chips_remaining=excluded.chips_remaining, finished_at=CURRENT_TIME
 
 func (s *Store) GetSummary(ctx context.Context, sessionID int64) (models.SessionSummary, error) {
 	var summary models.SessionSummary
+	summary.Rows = []models.SessionSummaryRow{}
+
 	row := s.db.QueryRowContext(ctx, `SELECT id, title FROM sessions WHERE id=?`, sessionID)
 	if err := row.Scan(&summary.SessionID, &summary.SessionName); err != nil {
 		return summary, err
