@@ -14,6 +14,7 @@ type Config struct {
 	JWTSecret                string
 	Port                     string
 	FrontendDistPath         string
+	DisableTelegramAuth      bool
 }
 
 func Load() Config {
@@ -27,6 +28,7 @@ func Load() Config {
 		JWTSecret:                getEnv("JWT_SECRET", "dev-secret"),
 		Port:                     getEnv("PORT", "8080"),
 		FrontendDistPath:         getEnv("FRONTEND_DIST_PATH", "../frontend/dist"),
+		DisableTelegramAuth: getEnv("DISABLE_TELEGRAM_AUTH", "false") == "true",
 	}
 	return cfg
 }

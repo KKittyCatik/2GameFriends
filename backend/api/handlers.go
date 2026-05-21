@@ -20,9 +20,13 @@ func NewHandler(store *storage.Store, exporter *sheets.Exporter) *Handler {
 	return &Handler{store: store, exporter: exporter}
 }
 
-func (h *Handler) RegisterRoutes(router *gin.Engine, botToken string) {
+func (h *Handler) RegisterRoutes(router *gin.Engine, botToken string, disableTelegramAuth bool) {
 	api := router.Group("/api")
-	api.Use(RateLimitMiddleware(), RequireTelegramInitData(botToken))
+	api.Use(RateLimitMiddleware())
+
+	if !disableTelegramAuth {
+    	api.Use(RequireTelegramInitData(botToken))
+	}
 
 	api.POST("/sessions", h.createSession)
 	api.GET("/sessions", h.listSessions)

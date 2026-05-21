@@ -64,15 +64,15 @@ func main() {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://web.telegram.org", "https://t.me"},
+		AllowOrigins:     []string{"https://web.telegram.org", "https://t.me", "http://localhost:5173"},
 		AllowMethods:     []string{"GET", "POST", "OPTIONS"},
-		AllowHeaders:     []string{"Content-Type", "X-Telegram-Init-Data"},
+		AllowHeaders:     []string{"Content-Type", "X-Telegram-Init-Data", "Origin",  "Authorization", "Accept"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
 	h := api.NewHandler(store, exporter)
-	h.RegisterRoutes(router, cfg.BotToken)
+	h.RegisterRoutes(router, cfg.BotToken, cfg.DisableTelegramAuth)
 
 	router.NoRoute(func(c *gin.Context) {
 		frontendPath := cfg.FrontendDistPath
