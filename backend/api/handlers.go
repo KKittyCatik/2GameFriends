@@ -25,7 +25,7 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, botToken string, disableTel
 	api.Use(RateLimitMiddleware())
 
 	if !disableTelegramAuth {
-    	api.Use(RequireTelegramInitData(botToken))
+		api.Use(RequireTelegramInitData(botToken))
 	}
 
 	api.POST("/sessions", h.createSession)
@@ -36,7 +36,10 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, botToken string, disableTel
 	api.GET("/sessions/:id/players", h.listPlayers)
 	api.POST("/sessions/:id/buyins", h.addBuyin)
 	api.GET("/sessions/:id/buyins", h.listBuyins)
+	api.DELETE("/sessions/:id/buyins/:bid", h.deleteBuyin)
+	api.PUT("/sessions/:id/buyins/:bid", h.updateBuyin)
 	api.POST("/sessions/:id/players/:pid/finish", h.finishPlayer)
+	api.PUT("/sessions/:id/players/:pid/finish", h.finishPlayer)
 	api.GET("/sessions/:id/summary", h.summary)
 	api.POST("/sessions/:id/export/sheets", h.exportSheets)
 }
@@ -168,14 +171,15 @@ func (h *Handler) addBuyin(c *gin.Context) {
 		return
 	}
 	var req struct {
-		PlayerID int64 `json:"player_id" binding:"required"`
-		Amount   int64 `json:"amount" binding:"required"`
+		PlayerID int64  `json:"player_id" binding:"required"`
+		Amount   int64  `json:"amount" binding:"required"`
+		Note     string `json:"note"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be a positive number"})
 		return
 	}
-	buyin, err := h.store.AddBuyin(c.Request.Context(), models.Buyin{SessionID: sessionID, PlayerID: req.PlayerID, Amount: req.Amount})
+	buyin, err := h.store.AddBuyin(c.Request.Context(), models.Buyin{SessionID: sessionID, PlayerID: req.PlayerID, Amount: req.Amount, Note: req.Note})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -200,6 +204,64 @@ func (h *Handler) listBuyins(c *gin.Context) {
 	c.JSON(http.StatusOK, buyins)
 }
 
+func (h *Handler) deleteBuyin(c *gin.Context) {
+	sessionID, ok := parseID(c, "id")
+	if !ok {
+		return
+	}
+	buyinID, ok := parseID(c, "bid")
+	if !ok {
+		return
+	}
+	if err := h.store.CheckSessionAccess(c.Request.Context(), sessionID, currentUser(c).ID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	if err := h.store.DeleteBuyin(c.Request.Context(), buyinID, sessionID); err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "buyin not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": "deleted"})
+}
+
+func (h *Handler) updateBuyin(c *gin.Context) {
+	sessionID, ok := parseID(c, "id")
+	if !ok {
+		return
+	}
+	buyinID, ok := parseID(c, "bid")
+	if !ok {
+		return
+	}
+	if err := h.store.CheckSessionAccess(c.Request.Context(), sessionID, currentUser(c).ID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	var req struct {
+		PlayerID int64  `json:"player_id" binding:"required"`
+		Amount   int64  `json:"amount" binding:"required"`
+		Note     string `json:"note"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.Amount <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "amount must be positive"})
+		return
+	}
+	buyin, err := h.store.UpdateBuyin(c.Request.Context(), buyinID, sessionID, req.PlayerID, req.Amount, req.Note)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "buyin not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, buyin)
+}
+
 func (h *Handler) finishPlayer(c *gin.Context) {
 	sessionID, ok := parseID(c, "id")
 	if !ok {
@@ -214,13 +276,14 @@ func (h *Handler) finishPlayer(c *gin.Context) {
 		return
 	}
 	var req struct {
-		ChipsRemaining int64 `json:"chips_remaining" binding:"required"`
+		ChipsRemaining int64  `json:"chips_remaining"`
+		ApprovedBy     string `json:"approved_by"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil || req.ChipsRemaining < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "chips_remaining must be non-negative"})
 		return
 	}
-	res, err := h.store.FinishPlayer(c.Request.Context(), models.PlayerResult{SessionID: sessionID, PlayerID: pid, ChipsRemaining: req.ChipsRemaining})
+	res, err := h.store.FinishPlayer(c.Request.Context(), models.PlayerResult{SessionID: sessionID, PlayerID: pid, ChipsRemaining: req.ChipsRemaining, ApprovedBy: req.ApprovedBy})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return

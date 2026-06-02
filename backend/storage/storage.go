@@ -187,7 +187,7 @@ func (s *Store) ListPlayers(ctx context.Context, sessionID int64) ([]models.Play
 }
 
 func (s *Store) AddBuyin(ctx context.Context, b models.Buyin) (models.Buyin, error) {
-	res, err := s.db.ExecContext(ctx, `INSERT INTO buyins(session_id, player_id, amount) VALUES(?, ?, ?)`, b.SessionID, b.PlayerID, b.Amount)
+	res, err := s.db.ExecContext(ctx, `INSERT INTO buyins(session_id, player_id, amount, note) VALUES(?, ?, ?, ?)`, b.SessionID, b.PlayerID, b.Amount, b.Note)
 	if err != nil {
 		return models.Buyin{}, err
 	}
@@ -198,7 +198,7 @@ func (s *Store) AddBuyin(ctx context.Context, b models.Buyin) (models.Buyin, err
 }
 
 func (s *Store) ListBuyins(ctx context.Context, sessionID int64) ([]models.Buyin, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id, session_id, player_id, amount, created_at FROM buyins WHERE session_id=? ORDER BY created_at`, sessionID)
+	rows, err := s.db.QueryContext(ctx, `SELECT id, session_id, player_id, amount, note, created_at FROM buyins WHERE session_id=? ORDER BY created_at`, sessionID)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (s *Store) ListBuyins(ctx context.Context, sessionID int64) ([]models.Buyin
 	out := []models.Buyin{}
 	for rows.Next() {
 		var b models.Buyin
-		if err := rows.Scan(&b.ID, &b.SessionID, &b.PlayerID, &b.Amount, &b.CreatedAt); err != nil {
+		if err := rows.Scan(&b.ID, &b.SessionID, &b.PlayerID, &b.Amount, &b.Note, &b.CreatedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, b)
@@ -215,13 +215,44 @@ func (s *Store) ListBuyins(ctx context.Context, sessionID int64) ([]models.Buyin
 	return out, rows.Err()
 }
 
+func (s *Store) DeleteBuyin(ctx context.Context, buyinID, sessionID int64) error {
+	res, err := s.db.ExecContext(ctx, `DELETE FROM buyins WHERE id=? AND session_id=?`, buyinID, sessionID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
+func (s *Store) UpdateBuyin(ctx context.Context, buyinID, sessionID, playerID, amount int64, note string) (models.Buyin, error) {
+	res, err := s.db.ExecContext(ctx,
+		`UPDATE buyins SET player_id=?, amount=?, note=? WHERE id=? AND session_id=?`,
+		playerID, amount, note, buyinID, sessionID)
+	if err != nil {
+		return models.Buyin{}, err
+	}
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return models.Buyin{}, sql.ErrNoRows
+	}
+	var b models.Buyin
+	row := s.db.QueryRowContext(ctx, `SELECT id, session_id, player_id, amount, note, created_at FROM buyins WHERE id=?`, buyinID)
+	if err := row.Scan(&b.ID, &b.SessionID, &b.PlayerID, &b.Amount, &b.Note, &b.CreatedAt); err != nil {
+		return models.Buyin{}, err
+	}
+	return b, nil
+}
+
 func (s *Store) FinishPlayer(ctx context.Context, result models.PlayerResult) (models.PlayerResult, error) {
 	_, err := s.db.ExecContext(ctx, `
-INSERT INTO player_results(session_id, player_id, chips_remaining)
-VALUES (?, ?, ?)
+INSERT INTO player_results(session_id, player_id, chips_remaining, approved_by)
+VALUES (?, ?, ?, ?)
 ON CONFLICT(session_id, player_id)
-DO UPDATE SET chips_remaining=excluded.chips_remaining, finished_at=CURRENT_TIMESTAMP`,
-		result.SessionID, result.PlayerID, result.ChipsRemaining)
+DO UPDATE SET chips_remaining=excluded.chips_remaining, approved_by=excluded.approved_by, finished_at=CURRENT_TIMESTAMP`,
+		result.SessionID, result.PlayerID, result.ChipsRemaining, result.ApprovedBy)
 	if err != nil {
 		return models.PlayerResult{}, err
 	}
@@ -242,7 +273,8 @@ func (s *Store) GetSummary(ctx context.Context, sessionID int64) (models.Session
 SELECT p.id, p.name, p.username,
 COALESCE((SELECT COUNT(*) FROM buyins b WHERE b.player_id=p.id), 0) AS buyins_count,
 COALESCE((SELECT SUM(b.amount) FROM buyins b WHERE b.player_id=p.id), 0) AS total_buyin,
-COALESCE((SELECT pr.chips_remaining FROM player_results pr WHERE pr.player_id=p.id AND pr.session_id=p.session_id), 0) AS chips_remaining
+COALESCE((SELECT pr.chips_remaining FROM player_results pr WHERE pr.player_id=p.id AND pr.session_id=p.session_id), 0) AS chips_remaining,
+COALESCE((SELECT pr.approved_by FROM player_results pr WHERE pr.player_id=p.id AND pr.session_id=p.session_id), '') AS approved_by
 FROM players p
 WHERE p.session_id=?
 ORDER BY p.id`, sessionID)
@@ -253,7 +285,7 @@ ORDER BY p.id`, sessionID)
 
 	for rows.Next() {
 		var r models.SessionSummaryRow
-		if err := rows.Scan(&r.PlayerID, &r.PlayerName, &r.Username, &r.BuyinsCount, &r.TotalBuyinChips, &r.ChipsRemaining); err != nil {
+		if err := rows.Scan(&r.PlayerID, &r.PlayerName, &r.Username, &r.BuyinsCount, &r.TotalBuyinChips, &r.ChipsRemaining, &r.ApprovedBy); err != nil {
 			return summary, err
 		}
 		r.ProfitChips = r.ChipsRemaining - r.TotalBuyinChips

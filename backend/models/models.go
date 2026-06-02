@@ -24,6 +24,7 @@ type Buyin struct {
 	SessionID int64     `json:"session_id"`
 	PlayerID  int64     `json:"player_id"`
 	Amount    int64     `json:"amount"`
+	Note      string    `json:"note"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
@@ -32,6 +33,7 @@ type PlayerResult struct {
 	SessionID      int64     `json:"session_id"`
 	PlayerID       int64     `json:"player_id"`
 	ChipsRemaining int64     `json:"chips_remaining"`
+	ApprovedBy     string    `json:"approved_by"`
 	FinishedAt     time.Time `json:"finished_at"`
 }
 
@@ -44,6 +46,7 @@ type SessionSummaryRow struct {
 	ChipsRemaining  int64   `json:"chips_remaining"`
 	ProfitChips     int64   `json:"profit_chips"`
 	ProfitFantics   float64 `json:"profit_fantics"`
+	ApprovedBy      string  `json:"approved_by"`
 }
 
 type SessionSummary struct {

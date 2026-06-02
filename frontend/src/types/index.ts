@@ -20,6 +20,7 @@ export interface Buyin {
   session_id: number
   player_id: number
   amount: number
+  note: string
   created_at: string
 }
 
@@ -32,6 +33,7 @@ export interface SummaryRow {
   chips_remaining: number
   profit_chips: number
   profit_fantics: number
+  approved_by?: string
 }
 
 export interface Summary {
